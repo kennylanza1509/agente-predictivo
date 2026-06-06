@@ -1,0 +1,9 @@
+# Dependencias del proyecto.
+# Por ahora la clase SensorVirtual usa solo la librería estándar (sin instalar nada).
+# Iremos descomentando estas líneas a medida que avancemos en el curso (S4):
+
+# pandas            # manejo de datos / series de sensores
+# matplotlib        # graficar las series
+# langchain         # framework del agente (S4)
+# faiss-cpu         # RAG en local (S4)
+# python-dotenv     # leer variables de .env
