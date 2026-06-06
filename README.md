@@ -37,8 +37,8 @@ Genera una serie de lecturas de temperatura que se degradan hasta la falla.
 - [x] Clase `EventoFalla` (registra cambios de estado)
 - [x] Histórico en CSV (`src/generar_datos.py` → `data/lecturas.csv`, `data/eventos.csv`)
 - [x] Herramienta de predicción de falla (`tools/predecir_falla.py`)
+- [x] Tool de notificación por correo (`tools/notificar.py`, smtplib + .env)
 - [ ] RAG sobre PDFs técnicos
-- [ ] Tool de notificación por correo
 - [ ] System prompt documentado
 
 ## Generar el histórico de datos
@@ -57,3 +57,13 @@ python tools/predecir_falla.py
 
 Lee `data/lecturas.csv`, calcula la tendencia de cada sensor (regresión lineal) y
 estima en cuántos pasos cruzará su umbral. Imprime un reporte y un bloque JSON.
+
+## Notificar por correo
+
+```bash
+python tools/notificar.py            # envía (o simula si falta .env)
+python tools/notificar.py --simular  # solo muestra el correo, no envía
+```
+
+Requiere un `.env` (copia de `.env.example`) con `EMAIL_REMITENTE`, `EMAIL_PASSWORD`
+(App Password de Gmail) y `EMAIL_DESTINO`. Sin credenciales reales corre en modo simulación.
