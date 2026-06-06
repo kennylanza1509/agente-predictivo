@@ -46,39 +46,127 @@ def cargar_env(ruta):
             os.environ.setdefault(clave.strip(), valor.strip())
 
 
+# Unidades de cada sensor (para mostrarlas en el reporte, más claras que el número solo).
+UNIDADES = {"TEMP": "°C", "VIB": "mm/s", "CORR": "A"}
+
+# Orden de severidad, de mayor a menor (para ordenar y para elegir la severidad global).
+_RANGO = {"CRÍTICO": 0, "ALERTA": 1, "VIGILAR": 2, "NORMAL": 3}
+
+
+def _clasificar(r):
+    """Traduce el estado/pasos de un sensor a una severidad legible."""
+    if r["estado"] == "EN_FALLA":
+        return "CRÍTICO"
+    if r["estado"] == "ESTABLE":
+        return "NORMAL"
+    pasos = r.get("pasos_para_falla")
+    if pasos is not None and pasos <= 5:
+        return "ALERTA"
+    return "VIGILAR"
+
+
+def _acciones(predicciones):
+    """Construye acciones concretas y consistentes con lo que dicen los sensores."""
+    sev = {p["sensor"]: p["severidad"] for p in predicciones}
+    criticos_alerta = {"CRÍTICO", "ALERTA"}
+    acciones = []
+
+    temp_mal = sev.get("TEMP") in criticos_alerta
+    vib_mal = sev.get("VIB") in criticos_alerta
+    corr_mal = sev.get("CORR") in criticos_alerta
+
+    # La firma TEMP + VIB en ascenso apunta a rodamiento / lubricación.
+    if temp_mal and vib_mal:
+        acciones.append(
+            "Inspeccionar y lubricar el rodamiento: temperatura y vibración suben "
+            "juntas, firma típica de rodamiento dañado o lubricación deficiente."
+        )
+    elif temp_mal:
+        acciones.append(
+            "Revisar la refrigeración: ventilación, suciedad en aletas y carga del motor."
+        )
+    elif vib_mal:
+        acciones.append(
+            "Verificar alineación, balanceo y anclaje; revisar el rodamiento."
+        )
+
+    if corr_mal:
+        acciones.append(
+            "Comprobar la carga del proceso: la corriente sube, posible sobrecarga."
+        )
+
+    if not acciones:
+        acciones.append("Mantener monitoreo rutinario; sin acción inmediata requerida.")
+    else:
+        # Cierre coherente con la urgencia general.
+        if "CRÍTICO" in sev.values():
+            acciones.append("Programar PARADA CONTROLADA antes de que la falla se agrave.")
+        else:
+            acciones.append("Programar la inspección en la próxima ventana de mantenimiento.")
+    return acciones
+
+
 def construir_cuerpo():
-    """Arma el texto del correo con el resultado de la predicción."""
+    """Arma el texto del correo con el resultado de la predicción.
+
+    El reporte se ordena por urgencia, marca la severidad de cada sensor y
+    cierra con acciones concretas coherentes con el diagnóstico.
+    """
     series = cargar_series(RUTA_CSV)
 
-    lineas = ["Reporte de mantenimiento predictivo — MOTOR-01", ""]
-    hay_alerta = False
-
+    predicciones = []
     for sensor, puntos in series.items():
         umbral = UMBRALES.get(sensor)
         if umbral is None:
             continue
         r = predecir_sensor(sensor, puntos, umbral)
+        r["severidad"] = _clasificar(r)
+        predicciones.append(r)
 
-        if r["estado"] == "EN_FALLA":
-            detalle = "YA EN FALLA (superó el umbral)"
-            hay_alerta = True
+    # Ordena de mayor a menor severidad; a igual severidad, el más cercano a fallar.
+    predicciones.sort(key=lambda r: (_RANGO[r["severidad"]],
+                                     r.get("pasos_para_falla") or 0))
+
+    severidad_global = min((p["severidad"] for p in predicciones),
+                           key=lambda s: _RANGO[s], default="NORMAL")
+
+    lineas = [
+        "Reporte de mantenimiento predictivo",
+        "",
+        "Equipo:    MOTOR-01",
+        f"Severidad: {severidad_global}",
+        "",
+        "Estado por sensor (ordenado por urgencia)",
+        "-" * 52,
+    ]
+
+    for r in predicciones:
+        unidad = UNIDADES.get(r["sensor"], "")
+        if r["severidad"] == "CRÍTICO":
+            detalle = "ya superó el umbral"
         elif r["estado"] == "ESTABLE":
             detalle = "estable, sin tendencia a fallar"
         else:
-            detalle = f"fallará en ~{r['pasos_para_falla']} pasos"
-            hay_alerta = True
-
+            detalle = f"fallaría en ~{r['pasos_para_falla']} pasos"
         lineas.append(
-            f"- {sensor}: actual {r['valor_actual']} / umbral {r['umbral']} "
-            f"-> {detalle}"
+            f"[{r['severidad']:<8}] {r['sensor']:<5} "
+            f"{r['valor_actual']:>6} {unidad:<4} "
+            f"(umbral {r['umbral']} {unidad}) — {detalle}"
         )
 
-    lineas.append("")
-    lineas.append("Acción sugerida: programar inspección de los sensores en alerta.")
+    lineas += ["", "Acciones recomendadas", "-" * 52]
+    for i, accion in enumerate(_acciones(predicciones), start=1):
+        lineas.append(f"{i}. {accion}")
 
-    asunto = "[MOTOR-01] ALERTA de mantenimiento predictivo" if hay_alerta \
-        else "[MOTOR-01] Estado normal"
-    return asunto, "\n".join(lineas)
+    lineas += ["", "— Agente PrediMant · mantenimiento predictivo (UTH 2026.4)"]
+
+    etiqueta = {
+        "CRÍTICO": "[MOTOR-01] CRÍTICO — acción inmediata requerida",
+        "ALERTA": "[MOTOR-01] ALERTA de mantenimiento predictivo",
+        "VIGILAR": "[MOTOR-01] Aviso: sensores a vigilar",
+        "NORMAL": "[MOTOR-01] Estado normal",
+    }
+    return etiqueta[severidad_global], "\n".join(lineas)
 
 
 def enviar_correo(asunto, cuerpo, remitente, password, destino):
