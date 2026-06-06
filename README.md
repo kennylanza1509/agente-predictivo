@@ -40,7 +40,7 @@ Genera una serie de lecturas de temperatura que se degradan hasta la falla.
 - [x] Tool de notificación por correo (`tools/notificar.py`, smtplib + .env)
 - [x] System prompt documentado (`prompts/system_agente.md` + `CLAUDE.md`)
 - [x] Orquestador del agente (`src/agente.py`)
-- [ ] RAG sobre PDFs técnicos
+- [x] RAG sobre base de conocimiento técnica (`tools/rag.py`, TF-IDF)
 
 ## Generar el histórico de datos
 
@@ -78,3 +78,13 @@ python src/agente.py --no-correo # solo diagnostica
 
 El "cerebro" que razona puede ser Claude Code: abre `claude` en esta carpeta y
 seguirá las instrucciones de `CLAUDE.md` + `prompts/system_agente.md`.
+
+## Consultar la base de conocimiento (RAG)
+
+```bash
+python tools/rag.py "vibracion creciente zona C"
+```
+
+Busca por TF-IDF en `data/conocimiento/*.md` (criterios de vibración, temperatura
+y corriente) y devuelve el fragmento más relevante. El agente lo usa para citar
+la norma técnica en su diagnóstico.

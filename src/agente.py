@@ -22,7 +22,15 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 
 from predecir_falla import cargar_series, predecir_sensor, UMBRALES, RUTA_CSV
+from rag import MotorRAG
 import notificar
+
+# Texto de consulta al RAG según el sensor (para recuperar la norma pertinente).
+CONSULTA_RAG = {
+    "TEMP": "temperatura alta motor rodamiento limite critico",
+    "VIB": "vibracion creciente motor zona ISO 10816",
+    "CORR": "corriente sobrecarga motor nominal",
+}
 
 
 def clasificar_severidad(prediccion):
@@ -91,11 +99,39 @@ def imprimir_diagnostico(severidad_global, hallazgos):
     print(f"Acción recomendada: {recomendar(severidad_global)}")
 
 
+def referencia_tecnica(hallazgos):
+    """Consulta el RAG sobre el sensor más severo y devuelve la cita técnica."""
+    if not hallazgos:
+        return None
+    # El "peor" sensor es el que tiene mayor severidad.
+    peor = max(hallazgos, key=lambda h: ORDEN_SEVERIDAD[h["severidad"]])
+    sensor = peor["prediccion"]["sensor"]
+    consulta = CONSULTA_RAG.get(sensor, sensor)
+
+    motor_rag = MotorRAG()
+    resultados = motor_rag.consultar(consulta, k=1)
+    if not resultados or resultados[0]["score"] == 0:
+        return None
+
+    top = resultados[0]
+    # Tomamos las primeras líneas del documento como cita resumida.
+    lineas = [l for l in top["texto"].strip().splitlines() if l.strip()]
+    resumen = "\n  ".join(lineas[:6])
+    return sensor, top["nombre"], resumen
+
+
 def main():
     severidad_global, hallazgos = diagnosticar()
 
     print("=== Diagnóstico del agente PrediMant ===\n")
     imprimir_diagnostico(severidad_global, hallazgos)
+
+    # Fundamentamos el diagnóstico con la base de conocimiento (RAG).
+    ref = referencia_tecnica(hallazgos)
+    if ref:
+        sensor, fuente, resumen = ref
+        print(f"\nReferencia técnica (RAG · {sensor} · fuente: {fuente}):")
+        print(f"  {resumen}")
     print()
 
     # Decide si notifica: solo si hay riesgo real.
