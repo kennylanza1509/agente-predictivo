@@ -36,7 +36,7 @@ Genera una serie de lecturas de temperatura que se degradan hasta la falla.
 - [x] Clase `Equipo` (agrupa sensores, estado NORMAL/ALERTA/FALLA)
 - [x] Clase `EventoFalla` (registra cambios de estado)
 - [x] Histórico en CSV (`src/generar_datos.py` → `data/lecturas.csv`, `data/eventos.csv`)
-- [ ] Herramienta de predicción de falla (tool calling)
+- [x] Herramienta de predicción de falla (`tools/predecir_falla.py`)
 - [ ] RAG sobre PDFs técnicos
 - [ ] Tool de notificación por correo
 - [ ] System prompt documentado
@@ -48,3 +48,12 @@ python src/generar_datos.py
 ```
 
 Crea `data/lecturas.csv` (todas las lecturas) y `data/eventos.csv` (los cambios de estado).
+
+## Predecir la falla
+
+```bash
+python tools/predecir_falla.py
+```
+
+Lee `data/lecturas.csv`, calcula la tendencia de cada sensor (regresión lineal) y
+estima en cuántos pasos cruzará su umbral. Imprime un reporte y un bloque JSON.
