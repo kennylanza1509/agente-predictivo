@@ -123,6 +123,40 @@ class Equipo:
         }
 
 
+class EventoFalla:
+    """Registra un cambio de estado del equipo (un "evento" de mantenimiento).
+
+    Cada vez que el equipo pasa de un nivel a otro (NORMAL -> ALERTA -> FALLA)
+    guardamos un EventoFalla. Esto es el "historial" que luego el agente
+    analiza para anticipar y recomendar mantenimiento.
+
+    Atributos:
+        paso:        instante (paso de tiempo) en que ocurrió el evento.
+        equipo:      nombre del equipo afectado.
+        nivel:       nuevo estado ("ALERTA" o "FALLA").
+        descripcion: texto legible de lo que pasó.
+    """
+
+    def __init__(self, paso, equipo, nivel, descripcion):
+        self.paso = paso
+        self.equipo = equipo
+        self.nivel = nivel
+        self.descripcion = descripcion
+
+    def como_fila(self):
+        """Devuelve el evento como diccionario, listo para escribir en CSV."""
+        return {
+            "paso": self.paso,
+            "equipo": self.equipo,
+            "nivel": self.nivel,
+            "descripcion": self.descripcion,
+        }
+
+    def __str__(self):
+        """Texto legible (lo que se ve al hacer print de un EventoFalla)."""
+        return f"[paso {self.paso}] {self.equipo}: {self.nivel} — {self.descripcion}"
+
+
 # --- Demo: esto solo corre si ejecutas este archivo directamente ---
 # (python src/modelos.py). Si lo importas desde otro archivo, no se ejecuta.
 if __name__ == "__main__":

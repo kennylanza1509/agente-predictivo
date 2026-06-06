@@ -1,0 +1,3 @@
+paso,equipo,nivel,descripcion
+27,MOTOR-01,ALERTA,el equipo pasó de NORMAL a ALERTA
+51,MOTOR-01,FALLA,el equipo pasó de ALERTA a FALLA
