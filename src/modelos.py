@@ -2,16 +2,15 @@
 modelos.py — Clases POO del agente de mantenimiento predictivo.
 
 Variante 2 del proyecto: Predictive maintenance con datos sintéticos.
-Por ahora solo contiene `SensorVirtual`, la clase que GENERA lecturas
-sintéticas de un sensor industrial (temperatura, vibración, presión, etc.)
-que se van degradando poco a poco hacia una falla.
 
-Usa solo la librería estándar de Python (random, math), así que corre
-sin instalar nada extra.
+Contiene:
+  - SensorVirtual: genera lecturas sintéticas de UN sensor que se degrada.
+  - Equipo: agrupa VARIOS sensores y calcula el estado general del activo.
+
+Usa solo la librería estándar de Python (random), así que corre sin instalar nada.
 """
 
 import random
-import math
 
 
 class SensorVirtual:
@@ -20,16 +19,14 @@ class SensorVirtual:
     La idea de "mantenimiento predictivo": un equipo sano da lecturas
     estables alrededor de un valor normal; un equipo que se está dañando
     muestra una TENDENCIA (las lecturas suben de a poco) más RUIDO aleatorio.
-    Con esos datos sintéticos luego entrenaremos/razonaremos para anticipar
-    la falla antes de que ocurra.
 
     Atributos:
-        tag:        nombre/identificador del sensor (ej. "TEMP-MOTOR-01").
-        unidad:     unidad de medida (ej. "°C", "mm/s", "bar").
-        valor_base: valor normal cuando el equipo está sano.
-        ruido:      cuánto varían las lecturas al azar (desviación).
-        degradacion: cuánto sube el valor en cada paso de tiempo
-                     (0 = equipo sano y estable; >0 = se está dañando).
+        tag:          identificador del sensor (ej. "TEMP-MOTOR-01").
+        unidad:       unidad de medida (ej. "°C", "mm/s", "A").
+        valor_base:   valor normal cuando el equipo está sano.
+        ruido:        cuánto varían las lecturas al azar (desviación).
+        degradacion:  cuánto sube el valor en cada paso de tiempo
+                      (0 = equipo sano y estable; >0 = se está dañando).
         umbral_falla: valor a partir del cual se considera FALLA.
     """
 
@@ -45,18 +42,13 @@ class SensorVirtual:
         self._paso = 0
 
     def leer(self):
-        """Genera y devuelve UNA lectura nueva del sensor.
-
-        Fórmula: valor_base + (degradación acumulada) + (ruido aleatorio).
-        Devuelve un diccionario con los datos de la medición.
-        """
+        """Genera y devuelve UNA lectura nueva del sensor (un diccionario)."""
         # Componente de degradación: crece con el tiempo si degradacion > 0.
         deriva = self.degradacion * self._paso
         # Componente de ruido: un valor aleatorio centrado en 0.
         ruido_aleatorio = random.gauss(0, self.ruido)
 
-        valor = self.valor_base + deriva + ruido_aleatorio
-        valor = round(valor, 2)
+        valor = round(self.valor_base + deriva + ruido_aleatorio, 2)
 
         # ¿Está en falla? Solo si definimos un umbral.
         en_falla = self.umbral_falla is not None and valor >= self.umbral_falla
@@ -76,25 +68,82 @@ class SensorVirtual:
         return [self.leer() for _ in range(n)]
 
 
+class Equipo:
+    """Un activo industrial (motor, bomba, ...) con varios sensores.
+
+    Agrupa objetos `SensorVirtual` y, en cada momento, los lee a todos
+    y calcula un ESTADO GENERAL del equipo:
+        - "FALLA"   : al menos un sensor superó su umbral.
+        - "ALERTA"  : ningún sensor en falla, pero alguno está cerca
+                      (>= 90 % de su umbral). Señal temprana = predictivo.
+        - "NORMAL"  : todos los sensores en rango sano.
+
+    Atributos:
+        nombre:   identificador del equipo (ej. "MOTOR-01").
+        tipo:     tipo de activo (ej. "motor", "bomba").
+        sensores: lista de SensorVirtual que monitorean el equipo.
+    """
+
+    # A partir de qué fracción del umbral consideramos "ALERTA" temprana.
+    FRACCION_ALERTA = 0.9
+
+    def __init__(self, nombre, tipo):
+        self.nombre = nombre
+        self.tipo = tipo
+        self.sensores = []  # empieza sin sensores; se agregan con agregar_sensor()
+
+    def agregar_sensor(self, sensor):
+        """Suma un SensorVirtual al equipo."""
+        self.sensores.append(sensor)
+
+    def _evaluar(self, lecturas):
+        """Decide el estado general a partir de las lecturas de este instante."""
+        nivel = "NORMAL"
+        # Recorremos en paralelo cada sensor con su lectura.
+        for sensor, lectura in zip(self.sensores, lecturas):
+            if lectura["en_falla"]:
+                return "FALLA"  # con una sola falla, el equipo ya está en falla
+            # ¿Cerca del umbral? -> alerta temprana (lo predictivo).
+            if sensor.umbral_falla is not None:
+                if lectura["valor"] >= self.FRACCION_ALERTA * sensor.umbral_falla:
+                    nivel = "ALERTA"
+        return nivel
+
+    def monitorear(self):
+        """Lee TODOS los sensores una vez y devuelve el estado del equipo.
+
+        Devuelve un diccionario:
+            {"equipo": ..., "estado": "NORMAL|ALERTA|FALLA", "lecturas": [...]}
+        """
+        lecturas = [s.leer() for s in self.sensores]
+        return {
+            "equipo": self.nombre,
+            "estado": self._evaluar(lecturas),
+            "lecturas": lecturas,
+        }
+
+
 # --- Demo: esto solo corre si ejecutas este archivo directamente ---
 # (python src/modelos.py). Si lo importas desde otro archivo, no se ejecuta.
 if __name__ == "__main__":
-    print("=== Demo: SensorVirtual de temperatura de un motor ===\n")
+    print("=== Demo: Equipo MOTOR-01 con 3 sensores ===\n")
 
-    # Un sensor de temperatura que arranca sano (~70 °C) pero se va
-    # degradando 0.4 °C por lectura. Falla si pasa de 90 °C.
-    sensor = SensorVirtual(
-        tag="TEMP-MOTOR-01",
-        unidad="°C",
-        valor_base=70.0,
-        ruido=0.8,
-        degradacion=0.4,
-        umbral_falla=90.0,
-    )
+    # Creamos el equipo y le agregamos 3 sensores que se degradan a distinto ritmo.
+    motor = Equipo(nombre="MOTOR-01", tipo="motor")
+    motor.agregar_sensor(SensorVirtual("TEMP", "°C",   70.0, ruido=0.8, degradacion=0.40, umbral_falla=90.0))
+    motor.agregar_sensor(SensorVirtual("VIB",  "mm/s",  2.0, ruido=0.15, degradacion=0.08, umbral_falla=7.0))
+    motor.agregar_sensor(SensorVirtual("CORR", "A",    12.0, ruido=0.30, degradacion=0.05, umbral_falla=18.0))
 
-    for lectura in sensor.generar_serie(60):
-        # Barra visual simple para "ver" la tendencia en la terminal.
-        barra = "#" * int((lectura["valor"] - 60))
-        alerta = "  <-- ¡FALLA!" if lectura["en_falla"] else ""
-        print(f"paso {lectura['paso']:>2} | "
-              f"{lectura['valor']:>6.2f} {lectura['unidad']} | {barra}{alerta}")
+    # Encabezado de la tabla.
+    print(f"{'paso':>4} | {'TEMP':>8} | {'VIB':>8} | {'CORR':>8} | estado")
+    print("-" * 52)
+
+    for paso in range(1, 41):
+        reporte = motor.monitorear()
+        # Sacamos el valor de cada sensor en el orden en que se agregaron.
+        temp, vib, corr = reporte["lecturas"]
+        print(f"{paso:>4} | "
+              f"{temp['valor']:>6.2f} {temp['unidad']:<1} | "
+              f"{vib['valor']:>6.2f} {vib['unidad']:<2} | "
+              f"{corr['valor']:>6.2f} {corr['unidad']:<1} | "
+              f"{reporte['estado']}")
