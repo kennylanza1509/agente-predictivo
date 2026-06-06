@@ -1,11 +1,5 @@
 paso,equipo,nivel,descripcion
-25,MOTOR-01,ALERTA,el equipo pasó de NORMAL a ALERTA
-26,MOTOR-01,NORMAL,el equipo pasó de ALERTA a NORMAL
-28,MOTOR-01,ALERTA,el equipo pasó de NORMAL a ALERTA
-29,MOTOR-01,NORMAL,el equipo pasó de ALERTA a NORMAL
-31,MOTOR-01,ALERTA,el equipo pasó de NORMAL a ALERTA
-33,MOTOR-01,NORMAL,el equipo pasó de ALERTA a NORMAL
-34,MOTOR-01,ALERTA,el equipo pasó de NORMAL a ALERTA
-49,MOTOR-01,FALLA,el equipo pasó de ALERTA a FALLA
-50,MOTOR-01,ALERTA,el equipo pasó de FALLA a ALERTA
-51,MOTOR-01,FALLA,el equipo pasó de ALERTA a FALLA
+27,MOTOR-01,ALERTA,el equipo pasó de NORMAL a ALERTA
+28,MOTOR-01,NORMAL,el equipo pasó de ALERTA a NORMAL
+29,MOTOR-01,ALERTA,el equipo pasó de NORMAL a ALERTA
+50,MOTOR-01,FALLA,el equipo pasó de ALERTA a FALLA

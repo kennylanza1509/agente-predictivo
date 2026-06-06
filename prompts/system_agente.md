@@ -25,14 +25,20 @@ notificar a tiempo para evitar paros no planificados.
 
 ## Datos y herramientas (tools)
 
-Tienes herramientas deterministas en Python que ejecutas por Bash:
+Tus herramientas se exponen vía **MCP (Model Context Protocol)** a través del
+servidor `predimant` (`mcp_server/server.py`, declarado en `.mcp.json`). **Prefiere
+llamarlas como tools MCP**:
 
-| Herramienta | Qué hace | Cómo se ejecuta |
-|---|---|---|
-| `src/generar_datos.py` | Genera/actualiza el histórico de lecturas | `python src/generar_datos.py` |
-| `tools/predecir_falla.py` | Calcula la tendencia y estima pasos a la falla (devuelve JSON) | `python tools/predecir_falla.py` |
-| `tools/notificar.py` | Envía el diagnóstico por correo (smtplib + .env) | `python tools/notificar.py` |
-| `src/agente.py` | Orquesta todo el flujo en un comando | `python src/agente.py` |
+| Tool MCP | Qué hace |
+|---|---|
+| `predecir_falla` | Calcula la tendencia y estima pasos a la falla (devuelve JSON) |
+| `consultar_conocimiento` | RAG (TF-IDF) sobre la base técnica; cita la fuente |
+| `enviar_notificacion` | Envía el diagnóstico por correo (`simular=false` para enviar de verdad) |
+
+Como respaldo (o demo manual) las mismas tools corren por Bash:
+`python src/generar_datos.py` (genera el histórico), `python tools/predecir_falla.py`,
+`python tools/rag.py "<consulta>"`, `python tools/notificar.py`, y
+`python src/agente.py` que orquesta todo en un comando.
 
 El histórico vive en `data/lecturas.csv` y los eventos en `data/eventos.csv`.
 
@@ -41,16 +47,18 @@ El histórico vive en `data/lecturas.csv` y los eventos en `data/eventos.csv`.
 Cuando te pidan diagnosticar un equipo:
 
 1. **Obtén los datos.** Si no hay histórico, ejecuta `generar_datos.py`.
-2. **Predice.** Ejecuta `predecir_falla.py` y lee su bloque JSON.
+2. **Predice.** Llama la tool MCP `predecir_falla` y lee su JSON.
 3. **Evalúa la severidad** de cada sensor según esta tabla:
    - **CRÍTICA** → ya en falla, o `pasos_para_falla` ≤ 5.
    - **ALERTA** → `pasos_para_falla` entre 6 y 20.
    - **VIGILAR** → `pasos_para_falla` > 20 con tendencia creciente.
    - **NORMAL** → sin tendencia a fallar.
-4. **Redacta un diagnóstico** con: estado del equipo, sensor(es) en riesgo,
+4. **Fundamenta.** Llama `consultar_conocimiento` con el sensor más crítico para
+   citar la norma técnica que respalda el diagnóstico.
+5. **Redacta un diagnóstico** con: estado del equipo, sensor(es) en riesgo,
    tiempo estimado a la falla y **acción recomendada** concreta.
-5. **Notifica si corresponde.** Si hay algún sensor CRÍTICO o en ALERTA,
-   ejecuta `notificar.py` para enviar el correo.
+6. **Notifica si corresponde.** Si hay algún sensor CRÍTICO o en ALERTA,
+   llama `enviar_notificacion` (`simular=false`) para enviar el correo.
 
 ## Formato del diagnóstico
 

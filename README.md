@@ -13,13 +13,43 @@ documentación técnica vía RAG y **notifica por correo**.
 ```
 agente-predictivo/
 ├── src/
-│   ├── modelos.py   ← clases POO (SensorVirtual, ...)
+│   ├── modelos.py   ← clases POO (SensorVirtual, Equipo, EventoFalla)
+│   ├── agente.py    ← orquestador del agente
 │   └── __init__.py
-├── data/            ← datos generados / PDFs del RAG
-├── tests/           ← pruebas
+├── tools/           ← herramientas: predicción, RAG, correo
+├── mcp_server/
+│   └── server.py    ← servidor MCP que expone las tools a Claude Code
+├── prompts/         ← system prompt del agente
+├── data/            ← datos generados + base de conocimiento (RAG)
+├── .mcp.json        ← config del servidor MCP (Claude Code se conecta solo)
 ├── requirements.txt
 ├── .env.example
 └── .gitignore
+```
+
+## Instalación
+
+```bash
+pip install -r requirements.txt
+```
+
+La única dependencia real es `mcp` (el SDK del Model Context Protocol). El resto
+del proyecto usa solo la librería estándar de Python.
+
+## Conectar las herramientas vía MCP (Model Context Protocol)
+
+El agente expone sus herramientas a Claude Code mediante un **servidor MCP**, el
+protocolo estándar para que un LLM use herramientas externas.
+
+- Definición del servidor: [`mcp_server/server.py`](mcp_server/server.py) — 3 tools:
+  `predecir_falla`, `consultar_conocimiento` (RAG) y `enviar_notificacion` (correo).
+- Configuración: [`.mcp.json`](.mcp.json). Al abrir Claude Code (`claude`) en esta
+  carpeta, el servidor `predimant` se conecta automáticamente y las tools quedan
+  disponibles por MCP. Verifícalo con el comando `/mcp`.
+
+```bash
+# Probar el servidor MCP manualmente (sin Claude Code):
+python mcp_server/server.py        # queda a la espera por stdio (Ctrl+C para salir)
 ```
 
 ## Cómo correr la demo del sensor
@@ -41,6 +71,7 @@ Genera una serie de lecturas de temperatura que se degradan hasta la falla.
 - [x] System prompt documentado (`prompts/system_agente.md` + `CLAUDE.md`)
 - [x] Orquestador del agente (`src/agente.py`)
 - [x] RAG sobre base de conocimiento técnica (`tools/rag.py`, TF-IDF)
+- [x] Servidor **MCP** que expone las tools a Claude Code (`mcp_server/server.py`, `.mcp.json`)
 
 ## Generar el histórico de datos
 

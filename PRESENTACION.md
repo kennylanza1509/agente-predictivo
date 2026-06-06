@@ -37,6 +37,8 @@ datos (sensores) -> histórico CSV -> predicción (tendencia)
 
 - **Código Python** = las herramientas deterministas.
 - **Claude Code** = el cerebro que razona y decide.
+- **MCP (Model Context Protocol)** = el puente estándar: Claude llama las tools
+  a través del servidor `predimant` (`mcp_server/server.py`), no por comandos sueltos.
 
 ---
 
@@ -73,6 +75,18 @@ Ejemplo real de la demo:
 
 ---
 
+## 6.5 Las tools vía MCP (35 s) — *requisito clave*
+
+Las herramientas se exponen por **MCP (Model Context Protocol)**, el estándar
+con que Claude Code usa tools externas.
+
+- En Claude Code escribe `/mcp` → aparece el servidor **predimant** conectado
+  con 3 tools: `predecir_falla`, `consultar_conocimiento`, `enviar_notificacion`.
+
+> "El agente no llama scripts sueltos: usa el protocolo estándar MCP."
+
+---
+
 ## 7. RAG: cita la norma (45 s)
 
 `tools/rag.py` (TF-IDF) busca en la base de conocimiento y **fundamenta** el
@@ -96,7 +110,7 @@ No es una opinión: cita la fuente técnica.
 
 ## 9. Cierre (30 s)
 
-✅ 3 clases POO · ✅ tool de predicción · ✅ RAG · ✅ correo real · ✅ system prompt
+✅ 3 clases POO · ✅ tool de predicción · ✅ RAG · ✅ correo real · ✅ system prompt · ✅ servidor MCP
 
 - Todo en **Python estándar**, sin API keys, sin librerías pesadas.
 - Repo público: github.com/kennylanza1509/agente-predictivo
@@ -108,8 +122,14 @@ No es una opinión: cita la fuente técnica.
 ## Comandos para la demo en vivo (chuleta)
 
 ```bash
-# 0) (opcional) acentos correctos en Windows:
+# 0a) instalar dependencias (una sola vez):
+pip install -r requirements.txt
+
+# 0b) (opcional) acentos correctos en Windows:
 set PYTHONUTF8=1
+
+# En Claude Code, verificar el servidor MCP conectado:
+#   /mcp        -> debe listar el servidor "predimant" con 3 tools
 
 # 1) generar el histórico
 python src/generar_datos.py

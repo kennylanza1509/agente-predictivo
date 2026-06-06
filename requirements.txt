@@ -1,6 +1,11 @@
 # Dependencias del proyecto.
-# Por ahora la clase SensorVirtual usa solo la librería estándar (sin instalar nada).
-# Iremos descomentando estas líneas a medida que avancemos en el curso (S4):
+
+# Servidor MCP (Model Context Protocol): expone las herramientas del agente
+# a Claude Code por el protocolo estándar. Es la única dependencia real.
+mcp[cli]>=1.2.0
+
+# El resto del proyecto (clases POO, predicción, RAG, correo) usa solo la
+# librería estándar. Estas quedan como referencia para futuras ampliaciones:
 
 # pandas            # manejo de datos / series de sensores
 # matplotlib        # graficar las series
