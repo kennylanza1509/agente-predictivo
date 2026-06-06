@@ -38,8 +38,9 @@ Genera una serie de lecturas de temperatura que se degradan hasta la falla.
 - [x] Histórico en CSV (`src/generar_datos.py` → `data/lecturas.csv`, `data/eventos.csv`)
 - [x] Herramienta de predicción de falla (`tools/predecir_falla.py`)
 - [x] Tool de notificación por correo (`tools/notificar.py`, smtplib + .env)
+- [x] System prompt documentado (`prompts/system_agente.md` + `CLAUDE.md`)
+- [x] Orquestador del agente (`src/agente.py`)
 - [ ] RAG sobre PDFs técnicos
-- [ ] System prompt documentado
 
 ## Generar el histórico de datos
 
@@ -67,3 +68,13 @@ python tools/notificar.py --simular  # solo muestra el correo, no envía
 
 Requiere un `.env` (copia de `.env.example`) con `EMAIL_REMITENTE`, `EMAIL_PASSWORD`
 (App Password de Gmail) y `EMAIL_DESTINO`. Sin credenciales reales corre en modo simulación.
+
+## Ejecutar el agente completo
+
+```bash
+python src/agente.py             # diagnostica y notifica si hay riesgo
+python src/agente.py --no-correo # solo diagnostica
+```
+
+El "cerebro" que razona puede ser Claude Code: abre `claude` en esta carpeta y
+seguirá las instrucciones de `CLAUDE.md` + `prompts/system_agente.md`.
